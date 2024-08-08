@@ -1,8 +1,8 @@
 use crate::{
-    fhe::{Fhe, Rng, SecretKey},
     data::Store,
     encryptor::Encryptor,
-    events::{EnclaveEvent, EventProducer},
+    events::{EnclaveEvent, EventProducer, KeyshareCreated, PublicKeyShareCreated, PublicKeyShareCreatedEvent},
+    fhe::{Fhe, Rng, SecretKey},
 };
 
 // Some loose error/result stuff we can use
@@ -30,7 +30,9 @@ async fn create_and_store_keyshare<R: Rng>(
     store.insert(&format!("{}/pk", e3_id).into_bytes(), &pk.as_bytes())?;
 
     // dispatch KeyshareCreated
-    producer.emit(EnclaveEvent::PublicKeyshareCreated(pk))?;
+    producer.emit(EnclaveEvent::KeyshareCreated(
+        KeyshareCreated { pubkey: pk },
+    ))?;
 
     Ok(())
 }
@@ -46,10 +48,10 @@ async fn destroy_keyshare(_e3_id: impl Into<String>) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        fhe,
         data::MockStore,
         encryptor::{Encrypted, MockEncryptor},
         events::MockEventProducer,
+        fhe,
     };
     use mockall::predicate::{eq, function};
     use rand::SeedableRng;
