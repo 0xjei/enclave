@@ -28,3 +28,8 @@ pub enum EnclaveEvent {
 pub trait EventProducer {
     fn emit(&self, event: EnclaveEvent) -> Result<()>;
 }
+
+#[automock]
+pub trait EventConsumer {
+    fn consume(&mut self, event: &EnclaveEvent);
+}
