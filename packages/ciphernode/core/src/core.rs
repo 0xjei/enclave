@@ -1,7 +1,7 @@
 use crate::{
     data::Store,
     encryptor::Encryptor,
-    events::{EnclaveEvent, EventProducer, KeyshareCreated, PublicKeyShareCreated, PublicKeyShareCreatedEvent},
+    events::{EnclaveEvent, EventProducer, KeyshareCreated},
     fhe::{Fhe, Rng, SecretKey},
 };
 
