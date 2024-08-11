@@ -45,6 +45,9 @@ impl From<SecretKey> for Vec<u8> {
     }
 }
 
+// TODO: implement From<Vec<u8>> for SecretKey
+
+// TODO: test me
 // Serialize Box<[i64]> to Vec<u8>
 fn serialize_box_i64(boxed: Box<[i64]>) -> Vec<u8> {
     let vec = boxed.into_vec();
@@ -55,6 +58,8 @@ fn serialize_box_i64(boxed: Box<[i64]>) -> Vec<u8> {
     bytes
 }
 
+
+// TODO: test me
 // Deserialize Vec<u8> to Box<[i64]>
 fn deserialize_to_box_i64(bytes: Vec<u8>) -> Option<Box<[i64]>> {
     if bytes.len() % mem::size_of::<i64>() != 0 {
