@@ -7,6 +7,7 @@ mod core;
 mod encryptor;
 mod data;
 mod events;
+mod sort;
 
 pub struct Core {
 	pub name: String,
