@@ -52,17 +52,21 @@ impl<T> Encrypted<T> {
     }
 }
 
-
 // This in an attempt to implement an AesEncryptor for the db data to sanity check the interfaces
 // TODO: decryption as required
 pub struct AesEncryptor {
     key: Vec<u8>,
 }
 
-impl<T: Serialize> Encryptor<T> for AesEncryptor
-{
+impl AesEncryptor {
+    pub fn new(key: Vec<u8>) -> AesEncryptor {
+        AesEncryptor { key }
+    }
+}
+
+impl<T: Into<Vec<u8>>> Encryptor<T> for AesEncryptor {
     fn encrypt(&self, data: T) -> Result<Encrypted<T>> {
-        let serialized = bincode::serialize(&data)?; 
+        let serialized: Vec<u8> = data.into();
         let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.key));
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let ciphertext = cipher
@@ -74,5 +78,3 @@ impl<T: Serialize> Encryptor<T> for AesEncryptor
         })
     }
 }
-
-

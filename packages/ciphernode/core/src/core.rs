@@ -9,10 +9,10 @@ use crate::{
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-async fn create_and_store_keyshare<R: Rng>(
-    fhe: Fhe,
+pub async fn create_and_store_keyshare<R: Rng>(
+    fhe: &Fhe,
     rng: &mut R,
-    store: &impl Store,
+    store: &mut impl Store,
     encryptor: &impl Encryptor<SecretKey>,
     producer: &impl EventProducer,
     e3_id: &str,
@@ -30,9 +30,9 @@ async fn create_and_store_keyshare<R: Rng>(
     store.insert(&format!("{}/pk", e3_id).into_bytes(), &pk.as_bytes())?;
 
     // dispatch KeyshareCreated
-    producer.emit(EnclaveEvent::KeyshareCreated(
-        KeyshareCreated { pubkey: pk },
-    ))?;
+    producer.emit(EnclaveEvent::KeyshareCreated(KeyshareCreated {
+        pubkey: pk,
+    }))?;
 
     Ok(())
 }
@@ -100,7 +100,7 @@ mod tests {
 
         producer.expect_emit().times(1).return_once(|_| Ok(()));
 
-        create_and_store_keyshare(fhe, &mut test_rng(), &store, &encryptor, &producer, "myid")
+        create_and_store_keyshare(&fhe, &mut test_rng(), &store, &encryptor, &producer, "myid")
             .await?;
         Ok(())
     }

@@ -33,3 +33,10 @@ pub trait EventProducer {
 pub trait EventConsumer {
     fn consume(&mut self, event: &EnclaveEvent);
 }
+
+pub struct FakeProducer;
+impl EventProducer for FakeProducer {
+    fn emit(&self,_:EnclaveEvent) -> Result<()> {
+        Ok(())
+    }
+}
