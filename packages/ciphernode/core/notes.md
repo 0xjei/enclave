@@ -1,4 +1,9 @@
-- [ ] Setup mock EventListner system
+# Notes
+
+Following are some notes on the implementation. This is not meant to be merged into the main branch but may become part of a technical spec or serve as a contributing guide at a later date.
+
+# TODO
+- [ ] Setup mock EventListner system and use within a test
 - [ ] EnclaveEvm dispatches CommitteeSelected
 - [ ] both Ciphernode and Aggregator listens for the event and runs keyshare handler
 - [ ] Aggregator listens for all other keyshares and aggregates them
