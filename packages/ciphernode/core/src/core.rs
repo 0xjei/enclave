@@ -100,7 +100,7 @@ mod tests {
 
         producer.expect_emit().times(1).return_once(|_| Ok(()));
 
-        create_and_store_keyshare(&fhe, &mut test_rng(), &store, &encryptor, &producer, "myid")
+        create_and_store_keyshare(&fhe, &mut test_rng(), &mut store, &encryptor, &producer, "myid")
             .await?;
         Ok(())
     }
