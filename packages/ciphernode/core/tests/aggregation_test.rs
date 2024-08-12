@@ -75,6 +75,7 @@ async fn test_key_aggregation() -> Result<()> {
     subscriber.subscribe(EnclaveEventType::ComputationRequested, Box::new(ciphernode));
 
     // Listen to events with the reporter
+    // TODO: Make it possible to listen on all events
     subscriber.subscribe(
         EnclaveEventType::ComputationRequested,
         Box::new(reporter.clone()),
