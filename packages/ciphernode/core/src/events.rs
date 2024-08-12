@@ -115,24 +115,24 @@ pub trait EventRuntime {
     async fn run(&mut self) -> Result<()>;
 }
 
-pub struct SimpleEventConsumer {
+pub struct SimpleEventSubscriber {
     handlers: HashMap<EnclaveEventType, Vec<Box<dyn EventConsumer>>>,
     receiver: mpsc::UnboundedReceiver<EnclaveEvent>,
 }
 
-pub struct SimpleEventProducer {
+pub struct SimpleEventPublisher {
     sender: mpsc::UnboundedSender<EnclaveEvent>,
 }
 
 #[async_trait]
-impl EventProducer for SimpleEventProducer {
+impl EventProducer for SimpleEventPublisher {
     async fn emit(&self, event: EnclaveEvent) -> Result<()> {
         self.sender.send(event)?;
         Ok(())
     }
 }
 
-impl SimpleEventConsumer {
+impl SimpleEventSubscriber {
     async fn dispatch(&self, event: EnclaveEvent) -> Result<()> {
         let event_type = event.event_type();
 
@@ -141,12 +141,13 @@ impl SimpleEventConsumer {
                 handler.consume(event.clone()).await?;
             }
         }
+
         Ok(())
     }
 }
 
 #[async_trait]
-impl EventRuntime for SimpleEventConsumer {
+impl EventRuntime for SimpleEventSubscriber {
     fn subscribe(&mut self, event_type: EnclaveEventType, handler: Box<dyn EventConsumer>) {
         self.handlers
             .entry(event_type)
@@ -162,21 +163,15 @@ impl EventRuntime for SimpleEventConsumer {
     }
 }
 
-pub fn create_event_system() -> (SimpleEventProducer, SimpleEventConsumer) {
+pub fn create_event_system() -> (SimpleEventPublisher, SimpleEventSubscriber) {
     let (sender, receiver) = mpsc::unbounded_channel();
     (
-        SimpleEventProducer { sender },
-        SimpleEventConsumer {
+        SimpleEventPublisher { sender },
+        SimpleEventSubscriber {
             handlers: HashMap::new(),
             receiver,
         },
     )
 }
 
-// #[async_trait]
-// impl EventProducer for SimpleEventSystem {
-//     async fn emit(&self, event: EnclaveEvent) -> Result<()> {
-//         self.sender.send(event)?;
-//         Ok(())
-//     }
-// }
+

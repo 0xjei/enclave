@@ -24,21 +24,24 @@ impl EventConsumer for TestHandler {
 
 #[tokio::test]
 async fn test_aggregation() -> Result<()> {
-    let (producer, mut consumer) = create_event_system();
+    let (publisher, mut subscriber) = create_event_system();
     let received = Arc::new(Mutex::new(Vec::new()));
     let handler = TestHandler {
         received: received.clone(),
     };
-    consumer.subscribe(EnclaveEventType::OutputDecrypted, Box::new(handler));
+
+    subscriber.subscribe(EnclaveEventType::OutputDecrypted, Box::new(handler));
+    
     let event_loop = tokio::spawn(async move {
-        consumer.run().await.unwrap();
+        subscriber.run().await.unwrap();
     });
     
-    producer.emit(EnclaveEvent::OutputDecrypted(OutputDecrypted {
+    publisher.emit(EnclaveEvent::OutputDecrypted(OutputDecrypted {
          output: "hello world".to_string(),
     })).await?;
+    
     // Wait a bit for events to be processed
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    tokio::time::sleep(Duration::from_millis(10)).await;
     
     // Stop the event loop
     event_loop.abort();
