@@ -163,6 +163,9 @@ impl EventRuntime for SimpleEventSubscriber {
     }
 }
 
+
+/// Create an event system for use within our test environment
+/// In production this will be replaced with libp2p
 pub fn create_event_system() -> (SimpleEventPublisher, SimpleEventSubscriber) {
     let (sender, receiver) = mpsc::unbounded_channel();
     (
