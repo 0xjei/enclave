@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use crate::{
     data::Store,
     encryptor::Encryptor,
@@ -9,20 +11,20 @@ use crate::{
 pub type Error = Box<dyn std::error::Error>;
 pub type Result<T> = std::result::Result<T, Error>;
 
-pub async fn create_and_store_keyshare<R: Rng>(
+pub async fn create_and_store_keyshare<R: Rng, P: EventProducer>(
     fhe: &Fhe,
-    rng: &mut R,
+    rng: Arc<Mutex<R>>,
     store: &mut impl Store,
     encryptor: &impl Encryptor<SecretKey>,
-    producer: &impl EventProducer,
+    producer: &P,
     e3_id: &str,
 ) -> Result<()> {
     // create FHE secret keypair
     let (sk, pk) = fhe.generate_keyshare(rng)?;
-
+    
     // encrypt secret at rest
     let e_sk = encryptor.encrypt(sk)?;
-
+    
     // save encrypted secret key
     store.insert(&format!("{}/sk", e3_id).into_bytes(), &e_sk.as_bytes())?;
 
@@ -30,9 +32,11 @@ pub async fn create_and_store_keyshare<R: Rng>(
     store.insert(&format!("{}/pk", e3_id).into_bytes(), &pk.as_bytes())?;
 
     // dispatch KeyshareCreated
-    producer.emit(EnclaveEvent::KeyshareCreated(KeyshareCreated {
-        pubkey: pk,
-    })).await?;
+    producer
+        .emit(EnclaveEvent::KeyshareCreated(KeyshareCreated {
+            pubkey: pk,
+        }))
+        .await?;
 
     Ok(())
 }
@@ -63,21 +67,22 @@ mod tests {
     pub type Error = Box<dyn std::error::Error>;
     pub type Result<T> = std::result::Result<T, Error>;
 
-    fn test_rng() -> ChaCha8Rng {
-        ChaCha8Rng::seed_from_u64(42)
+    fn test_rng() -> Arc<Mutex<ChaCha8Rng>> {
+        Arc::new(Mutex::new(ChaCha8Rng::seed_from_u64(42)))
     }
 
     #[tokio::test]
+    // #[ignore]
     async fn test_create_and_store_keyshare() -> Result<()> {
         // using concrete Fhe but creating inflection point
-        let fhe = Fhe::new(&mut test_rng(), vec![0x3FFFFFFF000001], 2048, 1032193)?;
+        let fhe = Fhe::new(test_rng(), vec![0x3FFFFFFF000001], 2048, 1032193)?;
 
         let mut encryptor = MockEncryptor::<fhe::SecretKey>::new();
         let mut store = MockStore::new();
         let mut producer = MockEventProducer::new();
 
-        let mut shared_rng = test_rng();
-        let (exp_sk, exp_pk) = fhe.generate_keyshare(&mut shared_rng)?;
+        let shared_rng = test_rng();
+        let (exp_sk, exp_pk) = fhe.generate_keyshare(shared_rng)?;
 
         let encrypted_sk = Encrypted::<SecretKey>::new(vec![1, 2, 3, 4]);
 
@@ -100,8 +105,9 @@ mod tests {
 
         producer.expect_emit().times(1).return_once(|_| Ok(()));
 
-        create_and_store_keyshare(&fhe, &mut test_rng(), &mut store, &encryptor, &producer, "myid")
+        create_and_store_keyshare(&fhe, test_rng(), &mut store, &encryptor, &producer, "myid")
             .await?;
+
         Ok(())
     }
 }

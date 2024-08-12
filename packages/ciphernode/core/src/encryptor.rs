@@ -67,7 +67,8 @@ impl AesEncryptor {
 impl<T: Into<Vec<u8>>> Encryptor<T> for AesEncryptor {
     fn encrypt(&self, data: T) -> Result<Encrypted<T>> {
         let serialized: Vec<u8> = data.into();
-        let cipher = Aes256Gcm::new(Key::<Aes256Gcm>::from_slice(&self.key));
+        let k = Key::<Aes256Gcm>::from_slice(&self.key);
+        let cipher = Aes256Gcm::new(k);
         let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
         let ciphertext = cipher
             .encrypt(&nonce, serialized.as_ref())

@@ -12,17 +12,3 @@ mod fhe;
 
 pub use ciphernode::*;
 pub use events::*;
-
-#[cfg(test)]
-mod tests {
-
-    // Some loose error/result stuff we can use
-    pub type Error = Box<dyn std::error::Error>;
-    pub type Result<T> = std::result::Result<T, Error>;
-
-    #[tokio::test]
-    #[ignore]
-    async fn test_ciphernode() -> Result<()> {
-        unimplemented!();
-    }
-}

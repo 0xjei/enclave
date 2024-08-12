@@ -90,7 +90,7 @@ impl EnclaveEvent {
 
 #[automock]
 #[async_trait]
-pub trait EventProducer {
+pub trait EventProducer: Send + Sync {
     async fn emit(&self, event: EnclaveEvent) -> Result<()>;
 }
 
@@ -105,12 +105,12 @@ impl EventProducer for FakeProducer {
 }
 
 #[async_trait]
-pub trait EventConsumer: Send + Sync + 'static {
+pub trait EventConsumer: Send + Sync {
     async fn consume(&self, event: EnclaveEvent) -> Result<()>;
 }
 
 #[async_trait]
-pub trait EventRuntime {
+pub trait EventRuntime: Send + Sync {
     fn subscribe(&mut self, event_type: EnclaveEventType, handler: Box<dyn EventConsumer>);
     async fn run(&mut self) -> Result<()>;
 }
@@ -120,6 +120,7 @@ pub struct SimpleEventSubscriber {
     receiver: mpsc::UnboundedReceiver<EnclaveEvent>,
 }
 
+#[derive(Clone)]
 pub struct SimpleEventPublisher {
     sender: mpsc::UnboundedSender<EnclaveEvent>,
 }
@@ -163,7 +164,6 @@ impl EventRuntime for SimpleEventSubscriber {
     }
 }
 
-
 /// Create an event system for use within our test environment
 /// In production this will be replaced with libp2p
 pub fn create_event_system() -> (SimpleEventPublisher, SimpleEventSubscriber) {
@@ -176,5 +176,3 @@ pub fn create_event_system() -> (SimpleEventPublisher, SimpleEventSubscriber) {
         },
     )
 }
-
-

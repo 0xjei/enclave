@@ -4,7 +4,10 @@ use fhe::{
 };
 use fhe_traits::Serialize;
 use rand::{CryptoRng, RngCore};
-use std::{mem, sync::Arc};
+use std::{
+    mem,
+    sync::{Arc, Mutex},
+};
 
 // Some loose error/result stuff we can use for this module
 pub type Error = Box<dyn std::error::Error>;
@@ -32,22 +35,17 @@ impl From<PublicKeyShare> for Vec<u8> {
     }
 }
 
-
 /// Our wrapped SecretKey
 #[derive(PartialEq)] // Avoid adding debugging and copy traits as this is a secret key and we want
                      // Underlying struct is a Box<[i64]> so Copy will do a memory copy although
                      // the key is zeroized on drop
-
 pub struct SecretKey(pub FheRsSecretKey);
 impl From<SecretKey> for Vec<u8> {
-    fn from(key:SecretKey) -> Vec<u8> {
-       serialize_box_i64(key.0.coeffs)
+    fn from(key: SecretKey) -> Vec<u8> {
+        serialize_box_i64(key.0.coeffs)
     }
 }
 
-// TODO: implement From<Vec<u8>> for SecretKey
-
-// TODO: test me
 // Serialize Box<[i64]> to Vec<u8>
 fn serialize_box_i64(boxed: Box<[i64]>) -> Vec<u8> {
     let vec = boxed.into_vec();
@@ -58,8 +56,6 @@ fn serialize_box_i64(boxed: Box<[i64]>) -> Vec<u8> {
     bytes
 }
 
-
-// TODO: test me
 // Deserialize Vec<u8> to Box<[i64]>
 fn deserialize_to_box_i64(bytes: Vec<u8>) -> Option<Box<[i64]>> {
     if bytes.len() % mem::size_of::<i64>() != 0 {
@@ -76,9 +72,8 @@ fn deserialize_to_box_i64(bytes: Vec<u8>) -> Option<Box<[i64]>> {
 
     Some(result.into_boxed_slice())
 }
-
 /// Fhe is the accessor crate for our Fhe encryption lib. We should use this as an inflection point.
-/// Underlying internal types and errors should not be leaked. We should aim to maintain a simple 
+/// Underlying internal types and errors should not be leaked. We should aim to maintain a simple
 /// API in line with our needs not the underlying library and what this does should be pretty
 /// lightweight
 pub struct Fhe {
@@ -88,7 +83,7 @@ pub struct Fhe {
 
 impl Fhe {
     pub fn new<R: Rng>(
-        rng: &mut R,
+        rng: Arc<Mutex<R>>,
         moduli: Vec<u64>,
         degree: usize,
         plaintext_modulus: u64,
@@ -98,7 +93,7 @@ impl Fhe {
             .set_plaintext_modulus(plaintext_modulus)
             .set_moduli(&moduli)
             .build_arc()?;
-        let crp = CommonRandomPoly::new(&params, rng)?;
+        let crp = CommonRandomPoly::new(&params, &mut *rng.lock().unwrap())?;
         Ok(Fhe { params, crp })
     }
 
@@ -106,9 +101,18 @@ impl Fhe {
         (&self.params, &self.crp)
     }
 
-    pub fn generate_keyshare<R: Rng>(&self, rng: &mut R) -> Result<(SecretKey, PublicKeyShare)> {
-        let sk_share = FheRsSecretKey::random(&self.params, rng);
-        let pk_share = FheRsPublicKeyShare::new(&sk_share, self.crp.clone(), rng)?;
+    pub fn generate_keyshare<R: Rng>(
+        &self,
+        rng: Arc<Mutex<R>>,
+    ) -> Result<(SecretKey, PublicKeyShare)> {
+        let sk_share = {
+            let mut r1 = rng.lock().unwrap();
+            FheRsSecretKey::random(&self.params, &mut *r1)
+        };
+        let pk_share = {
+            let mut r2 = rng.lock().unwrap();
+            FheRsPublicKeyShare::new(&sk_share, self.crp.clone(), &mut *r2)?
+        };
         Ok((SecretKey(sk_share), PublicKeyShare(pk_share)))
     }
 }

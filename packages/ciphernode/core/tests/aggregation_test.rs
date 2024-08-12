@@ -3,20 +3,21 @@ use std::{sync::Arc, time::Duration};
 use async_std::sync::Mutex;
 use async_trait::*;
 use enclave_core::{
-    create_event_system, EnclaveEvent, EnclaveEventType, EventConsumer, EventProducer,
-    EventRuntime, OutputDecrypted,
+    create_event_system, Ciphernode, ComputationRequested, EnclaveEvent, EnclaveEventType,
+    EventConsumer, EventProducer, EventRuntime, OutputDecrypted,
 };
 
 // Some loose error/result stuff we can use
 type Error = Box<dyn std::error::Error>;
 type Result<T> = std::result::Result<T, Error>;
 
-struct TestHandler {
+#[derive(Clone)]
+struct EventReporter {
     received: Arc<Mutex<Vec<EnclaveEvent>>>,
 }
 
 #[async_trait]
-impl EventConsumer for TestHandler {
+impl EventConsumer for EventReporter {
     async fn consume(&self, event: EnclaveEvent) -> Result<()> {
         self.received.lock().await.push(event);
         Ok(())
@@ -29,11 +30,11 @@ impl EventConsumer for TestHandler {
 async fn test_event_publisher() -> Result<()> {
     let (publisher, mut subscriber) = create_event_system();
     let received = Arc::new(Mutex::new(Vec::new()));
-    let handler = TestHandler {
+    let reporter = EventReporter {
         received: received.clone(),
     };
 
-    subscriber.subscribe(EnclaveEventType::OutputDecrypted, Box::new(handler));
+    subscriber.subscribe(EnclaveEventType::OutputDecrypted, Box::new(reporter));
 
     let event_loop = tokio::spawn(async move {
         subscriber.run().await.unwrap();
@@ -45,8 +46,8 @@ async fn test_event_publisher() -> Result<()> {
         }))
         .await?;
 
-    // Wait a bit for events to be processed
-    tokio::time::sleep(Duration::from_millis(10)).await;
+    // Wait a tick for events to be processed
+    tokio::time::sleep(Duration::from_millis(0)).await;
 
     // Stop the event loop
     event_loop.abort();
@@ -59,11 +60,56 @@ async fn test_event_publisher() -> Result<()> {
     Ok(())
 }
 
-// test_ciphernode
-
 #[tokio::test]
 async fn test_key_aggregation() -> Result<()> {
+    // NOTE: Under construction
+    
     let (publisher, mut subscriber) = create_event_system();
+    let received = Arc::new(Mutex::new(Vec::new()));
+    let reporter = EventReporter {
+        received: received.clone(),
+    };
+    let ciphernode = Ciphernode::new(publisher.clone())?;
 
+    // Setup ciphernode system.
+    subscriber.subscribe(EnclaveEventType::ComputationRequested, Box::new(ciphernode));
+
+    // Listen to events with the reporter
+    subscriber.subscribe(
+        EnclaveEventType::ComputationRequested,
+        Box::new(reporter.clone()),
+    );
+    subscriber.subscribe(EnclaveEventType::KeyshareCreated, Box::new(reporter.clone()));
+
+
+    // Setup the loop
+    let event_loop = tokio::spawn(async move {
+        subscriber.run().await.unwrap();
+    });
+
+    // Publish the first event
+    publisher
+        .emit(EnclaveEvent::ComputationRequested(ComputationRequested {
+            e3_id: "1234".to_string(),
+            ciphernode_group_length: 100,
+            ciphernode_threshold: 50,
+            sortition_seed: 1234567,
+        }))
+        .await?;
+
+    // Wait a bit for events to be processed
+    tokio::time::sleep(Duration::from_millis(0)).await;
+
+    // Stop the event loop
+    event_loop.abort();
+
+    let received = received.lock().await;
+
+    assert_eq!(received.len(), 2);
+
+    // First event dispatches
+    assert!(matches!(received[0], EnclaveEvent::ComputationRequested(_)));
+    // Ciphernode dispatches keyshare created
+    assert!(matches!(received[1], EnclaveEvent::KeyshareCreated(_)));
     Ok(())
 }
