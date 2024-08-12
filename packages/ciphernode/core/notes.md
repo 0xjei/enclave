@@ -70,5 +70,10 @@ By only sending the rank list length and random seed to the node we save on traf
 
 # Aggregation
 
-When an aggregation node receives a `ComputationRequested` event they take  
-Nodes compete to aggregate the public key for the committee. Nodes sign their share as they publish it.^ This dispatches a `KeyshareCreated(PublicKeyShare,Signature)` event. The `PublicKeyShare` can be validated by ensuring the Signature matches the given publickey. The keyshare can then be aggregated
+An aggregation node can receive historical `NodeRegistered` events in order to assemble all registered nodes and their rank and reconstruct the whole registered node list. This list can be saved to local storage for the node.
+
+When an aggregation node receives a `ComputationRequested` event they store the node limit and then wait for events until they have received the correct number of keyshares for the given nodes in the list. The aggregation node can shuffle the list ranks according to the given random seed as applied to the ChaCha8 based rng. The list can be truncated at the limit to provide the definitive list. 
+
+The aggregation node then listens for the `KeyShareCreated` event in order to track when a member of the list has published their keyshare. Once all the keyshares are accounted for the Aggregation node will then publish a `PublicKeyCreated(e3_id, PublicKey)` event and call the respective evm method.
+
+Nodes compete to aggregate the public key for the committee. Nodes sign their share as they publish it. This dispatches a `KeyshareCreated(PublicKeyShare,Signature)` event. The `PublicKeyShare` can be validated by ensuring the Signature matches the given publickey. The keyshare can then be aggregated

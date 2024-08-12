@@ -32,7 +32,7 @@ pub async fn create_and_store_keyshare<R: Rng>(
     // dispatch KeyshareCreated
     producer.emit(EnclaveEvent::KeyshareCreated(KeyshareCreated {
         pubkey: pk,
-    }))?;
+    })).await?;
 
     Ok(())
 }
