@@ -63,6 +63,7 @@ pub enum EnclaveEventType {
     CiphernodeRegistered,
     CiphernodeDeregistered,
     ComputationRequested,
+    All,
 }
 
 #[derive(Clone, Debug)]
@@ -136,9 +137,14 @@ impl EventProducer for SimpleEventPublisher {
 impl SimpleEventSubscriber {
     async fn dispatch(&self, event: EnclaveEvent) -> Result<()> {
         let event_type = event.event_type();
-
         if let Some(handlers) = self.handlers.get(&event_type) {
             for handler in handlers {
+                handler.consume(event.clone()).await?;
+            }
+        }
+
+        if let Some(all_handlers) = self.handlers.get(&EnclaveEventType::All) {
+            for handler in all_handlers {
                 handler.consume(event.clone()).await?;
             }
         }

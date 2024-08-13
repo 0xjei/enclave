@@ -75,13 +75,10 @@ async fn test_key_aggregation() -> Result<()> {
     subscriber.subscribe(EnclaveEventType::ComputationRequested, Box::new(ciphernode));
 
     // Listen to events with the reporter
-    // TODO: Make it possible to listen on all events
     subscriber.subscribe(
-        EnclaveEventType::ComputationRequested,
+        EnclaveEventType::All,
         Box::new(reporter.clone()),
     );
-    subscriber.subscribe(EnclaveEventType::KeyshareCreated, Box::new(reporter.clone()));
-
 
     // Setup the loop
     let event_loop = tokio::spawn(async move {
